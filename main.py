@@ -1,15 +1,3 @@
-"""weather_calendar_app.py — kompletna aplikacja Tkinter
---------------------------------------------------
-Aplikacja pogody połączona z kalendarzem z obsługą:
-• wielu kalendarzy (prywatne / publiczne) przypiętych do jednego konta,
-• udostępniania kalendarzy innym użytkownikom,
-• filtrowania wydarzeń wg wybranego kalendarza,
-• podglądu wydarzeń w dowolnym dniu (<<CalendarSelected>>),
-• API OpenWeatherMap (°C, 🇵🇱 opisy).
-
-Autor: ChatGPT, czerwiec 2025
-"""
-
 from __future__ import annotations
 
 import json
@@ -24,19 +12,13 @@ from tkinter import messagebox, simpledialog, ttk
 
 from tkcalendar import Calendar
 
-# ------------------------------------------------------------
-# Ustawienia
-# ------------------------------------------------------------
 DB_FILE = Path("weather_calendar.db")
-OPENWEATHER_API_KEY = "20924b2526831a0f5e3779e09bddf633"  # <‑‑ podmień na swój klucz!
+OPENWEATHER_API_KEY = "20924b2526831a0f5e3779e09bddf633"
 
 
 class WeatherCalendarApp:
     """Główne okno aplikacji."""
 
-    # ------------------------------------------------------------------
-    # KONSTRUKTOR
-    # ------------------------------------------------------------------
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Aplikacja Pogodowa z Kalendarzem (multi‑kalendarze)")
@@ -52,18 +34,13 @@ class WeatherCalendarApp:
         self.current_user: dict | None = None
         self._cal_map: dict[str, int] = {}
 
-        # Inicjacja DB i ekran logowania
         self._init_db()
         self._create_login_screen()
 
-    # ------------------------------------------------------------------
-    # BAZA DANYCH
-    # ------------------------------------------------------------------
     def _init_db(self) -> None:
         self.conn = sqlite3.connect(DB_FILE)
         self.cursor = self.conn.cursor()
 
-        # users
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -74,7 +51,6 @@ class WeatherCalendarApp:
             """
         )
 
-        # calendars
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS calendars (
@@ -87,7 +63,6 @@ class WeatherCalendarApp:
             """
         )
 
-        # calendar_shares
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS calendar_shares (
@@ -100,7 +75,6 @@ class WeatherCalendarApp:
             """
         )
 
-        # events (calendar_id może być NULL w starszej bazie)
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS events (
@@ -120,9 +94,6 @@ class WeatherCalendarApp:
             pass  # kolumna już istnieje
         self.conn.commit()
 
-    # ------------------------------------------------------------------
-    # LOGIN / REJESTRACJA
-    # ------------------------------------------------------------------
     def _create_login_screen(self) -> None:
         self._clear_root()
         frame = ttk.Frame(self.root, padding=20)
@@ -131,11 +102,11 @@ class WeatherCalendarApp:
         ttk.Label(frame, text="Aplikacja Pogodowa z Kalendarzem", font=("Helvetica", 16)).grid(
             row=0, column=0, columnspan=2, pady=10
         )
-        # username
+        # login
         ttk.Label(frame, text="Nazwa użytkownika:").grid(row=1, column=0, sticky=tk.W)
         self.username_var = tk.StringVar()
         ttk.Entry(frame, textvariable=self.username_var, width=28).grid(row=1, column=1, pady=5)
-        # password
+        # haslo
         ttk.Label(frame, text="Hasło:").grid(row=2, column=0, sticky=tk.W)
         self.password_var = tk.StringVar()
         ttk.Entry(frame, textvariable=self.password_var, show="*", width=28).grid(row=2, column=1, pady=5)
@@ -172,9 +143,6 @@ class WeatherCalendarApp:
         self._ensure_default_calendar(row[0])
         self._create_main_ui()
 
-    # ------------------------------------------------------------------
-    # DANE KALENDARZY
-    # ------------------------------------------------------------------
     def _ensure_default_calendar(self, uid: int) -> None:
         self.cursor.execute("SELECT 1 FROM calendars WHERE owner_id=?", (uid,))
         if not self.cursor.fetchone():
@@ -209,12 +177,8 @@ class WeatherCalendarApp:
         if self.cal_menu.get() not in self._cal_map:
             self.cal_menu.current(0)
 
-    # ------------------------------------------------------------------
-    # GŁÓWNE UI
-    # ------------------------------------------------------------------
     def _create_main_ui(self) -> None:
         self._clear_root()
-        # Grid root
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_columnconfigure(1, weight=1)
         self.root.grid_rowconfigure(1, weight=1)
@@ -226,7 +190,7 @@ class WeatherCalendarApp:
         ttk.Button(top, text="Moje kalendarze", command=self._open_cal_manager).pack(side=tk.LEFT, padx=4)
         ttk.Button(top, text="Wyloguj", command=self._create_login_screen).pack(side=tk.RIGHT, padx=4)
 
-        # ----------- Pogoda -----------
+        # Pogoda
         w_frame = ttk.LabelFrame(self.root, text="Pogoda", padding=10, style="Weather.TLabelframe")
         w_frame.grid(row=1, column=0, sticky="nsew", padx=8, pady=8)
         w_frame.grid_rowconfigure(1, weight=1)
@@ -242,7 +206,7 @@ class WeatherCalendarApp:
         self.weather_info = ttk.Frame(w_frame, style="Weather.TLabelframe")
         self.weather_info.grid(row=1, column=0, sticky="nsew", pady=6)
 
-        # ----------- Kalendarz -----------
+        # Kalendarz
         c_frame = ttk.LabelFrame(self.root, text="Kalendarz", padding=8)
         c_frame.grid(row=1, column=1, sticky="nsew", padx=8, pady=8)
         c_frame.grid_rowconfigure(3, weight=1)
@@ -268,12 +232,8 @@ class WeatherCalendarApp:
         self.events_frame.grid(row=3, column=0, columnspan=3, sticky="nsew", pady=6)
         self._update_events()
 
-        # pobierz pogodę na start
         self._fetch_weather()
 
-    # ------------------------------------------------------------------
-    # POGODA
-    # ------------------------------------------------------------------
     def _fetch_weather(self) -> None:
         city = self.city_var.get().strip()
         if not city:
@@ -346,9 +306,6 @@ class WeatherCalendarApp:
             w.destroy()
         ttk.Label(self.weather_info, text=f"Błąd pobierania danych: {msg}", style="WeatherInfo.TLabel").pack(pady=8)
 
-    # ------------------------------------------------------------------
-    # WYDARZENIA
-    # ------------------------------------------------------------------
     def _add_event(self) -> None:
         desc = self.ev_var.get().strip()
         if not desc:
@@ -411,9 +368,7 @@ class WeatherCalendarApp:
             self.conn.commit()
             self._update_events()
 
-    # ------------------------------------------------------------------
-    # MENEDŻER KALENDARZY
-    # ------------------------------------------------------------------
+
     def _open_cal_manager(self) -> None:
         win = tk.Toplevel(self.root)
         win.title("Moje kalendarze")
@@ -423,7 +378,6 @@ class WeatherCalendarApp:
 
         ttk.Label(win, text="Twoje kalendarze", font=("Helvetica", 14, "bold"), padding=6).pack()
 
-        # list & scrollbar
         list_frame = ttk.Frame(win)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=8)
         canvas = tk.Canvas(list_frame)
@@ -516,17 +470,10 @@ class WeatherCalendarApp:
 
         win.protocol("WM_DELETE_WINDOW", lambda: (win.destroy(), self._refresh_cal_menu(), self._update_events()))
 
-    # ------------------------------------------------------------------
-    # POMOCNICZE
-    # ------------------------------------------------------------------
     def _clear_root(self) -> None:
         for w in self.root.winfo_children():
             w.destroy()
 
-
-# ----------------------------------------------------------------------
-# ENTRY POINT
-# ----------------------------------------------------------------------
 
 if __name__ == "__main__":
     root = tk.Tk()
